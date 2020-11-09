@@ -55,17 +55,15 @@ def get_f1_score_label(pre_lines, gold_lines, label="organization"):
         for i in gold:
             if i not in pre:
                 FN += 1
-    print(TP, FP, FN)
     p = TP / (TP + FP)
     r = TP / (TP + FN)
     f = 2 * p * r / (p + r)
-    print(p, r, f)
     return f
 
 
 def get_f1_score(pre_file="ner_predict.json", gold_file="data/thuctc_valid.json"):
-    pre_lines = [json.loads(line.strip()) for line in open(pre_file) if line.strip()]
-    gold_lines = [json.loads(line.strip()) for line in open(gold_file) if line.strip()]
+    pre_lines = [json.loads(line.strip()) for line in open(pre_file, encoding='utf8') if line.strip()]
+    gold_lines = [json.loads(line.strip()) for line in open(gold_file, encoding='utf8') if line.strip()]
     f_score = {}
     labels = ['address', 'book', 'company', 'game', 'government', 'movie', 'name', 'organization', 'position', 'scene']
     sum = 0
