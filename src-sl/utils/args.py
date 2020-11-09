@@ -66,6 +66,7 @@ def get_parser():
                         help="""specified as 'dev_id/num_folds', where dev_id and num_folds are both Int, like 0/10、 
                         4/5.""")
     parser.add_argument("--topk", action="store_true")
+    parser.add_argument("mode", type=str, default=None)
 
     return parser.parse_args()
 

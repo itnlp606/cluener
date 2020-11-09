@@ -89,4 +89,5 @@ def main(mode='dev'):
 
 
 if __name__ == '__main__':
-    main('dev')
+    assert args.mode is not None
+    main(args.mode)
