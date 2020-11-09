@@ -71,7 +71,6 @@ def evaluate(model, devloader, debug=False):
                             score[label_type]['fp'] += 1
                     if debug:
                         print(pred_tag_seq[0])
-                        print(sample_info['fid'], sample_info['gold'], sample_info['text'], end='\n\n')
         t.update(len(devloader))
     model.train()
     for label_type in LABEL_TYPES:
