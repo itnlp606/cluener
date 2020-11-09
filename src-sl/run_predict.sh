@@ -1,0 +1,1 @@
+python src-sl/predict.py --pretrained_cache_dir pretrained --batch_size 16

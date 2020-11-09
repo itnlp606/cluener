@@ -1,0 +1,5 @@
+LABEL_TYPES = {"game": 0, "government": 1, "name": 2, "position": 3, "book": 4, "movie": 5, "address": 6, "organization": 7, "company": 8, "scene": 9}
+
+TAG2ID = {'B-game': 0, 'I-game': 1, 'B-government': 2, 'I-government': 3, 'B-name': 4, 'I-name': 5, 'B-position': 6, 'I-position': 7, 'B-book': 8, 'I-book': 9, 'B-movie': 10, 'I-movie': 11, 'B-address': 12, 'I-address': 13, 'B-organization': 14, 'I-organization': 15, 'B-company': 16, 'I-company': 17, 'B-scene': 18, 'I-scene': 19, 'O': 20, '[CLS]': 21, '[END]': 22}
+
+ID2TAG = ['B-game', 'I-game', 'B-government', 'I-government', 'B-name', 'I-name', 'B-position', 'I-position', 'B-book', 'I-book', 'B-movie', 'I-movie', 'B-address', 'I-address', 'B-organization', 'I-organization', 'B-company', 'I-company', 'B-scene', 'I-scene', 'O', '[CLS]', '[END]']
