@@ -68,10 +68,9 @@ class NERSet(Dataset):
             'text': sample['text']
         }
 
-        tag_ids = [TAG2ID['[CLS]']] + [TAG2ID[t] for t in sample['labels_list']] + [TAG2ID['[END]']]
-
-        assert len(tag_ids) == len(input_ids)
         if self.mode != 'test':
+            tag_ids = [TAG2ID['[CLS]']] + [TAG2ID[t] for t in sample['labels_list']] + [TAG2ID['[END]']]
+            assert len(tag_ids) == len(input_ids)
             sample_info['gold'] = sample['gold']
             return input_ids, attention_mask, sample_info, tag_ids
         else:
