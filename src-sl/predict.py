@@ -10,6 +10,7 @@ from tqdm import tqdm
 from reader.myReader import NERSet
 from utils import ner
 from utils.args import get_parser, VersionConfig
+from utils.ner import get_f1_score
 from utils.utils import clear_dir
 
 args = get_parser()
@@ -79,7 +80,12 @@ def main(mode='dev'):
             for sample in result:
                 f.write(json.dumps(sample, ensure_ascii=False)+'\n')
 
+        if mode == 'dev':
+            f_score, avg = get_f1_score(pre_file=join(args.data_dir, 'dev.json'), gold_file=join(save_dir, 'cluener_predict.json'))
+            print(f_score, avg)
+
     predict()
+
 
 
 if __name__ == '__main__':

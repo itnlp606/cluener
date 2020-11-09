@@ -64,8 +64,8 @@ def evaluate(model, devloader, debug=False):
                             score[label_type]['fn'] += 1
                         else:
                             score[label_type]['tp'] += 1
-                    for lb in decode_labels:
-                        if not lb in sample_info['gold']:
+                    for lb in decode_labels.get(label_type, {}).keys():
+                        if not lb in sample_info['gold'].get(label_type, {}).keys():
                             if debug:
                                 print('FP:', lb)
                             score[label_type]['fp'] += 1
