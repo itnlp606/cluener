@@ -141,18 +141,18 @@ def main():
             p,r,f1 = evaluate(swa_model.module, devloader)
             logger.info(f"swa: {epoch + 1}epoches,  percision={p}, recall={r}, f1={f1}\n")
 
-        if epoch >= args.max_epoches - 1:
-            save_dir = join(OUTPUT_DIR, f'epoch_{epoch}')
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
+            if epoch > 3:
+                save_dir = join(OUTPUT_DIR, f'epoch_{epoch}')
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
 
-            with open(join(save_dir, 'evaluate.txt'), 'w') as f:
-                f.write(f'precision={p}, recall={r}, f1={f1} dev_size={len(devset)}\n')
-                f.write(f'batch_size={args.batch_size}, epoch={epoch}')
-            torch.save(swa_model.module, join(save_dir, 'model.pth'))
-            VERSION_CONFIG.dump(save_dir)
-            with open(f'{OUTPUT_DIR}/args.txt', 'w') as f:
-                f.write(str(args))
+                with open(join(save_dir, 'evaluate.txt'), 'w') as f:
+                    f.write(f'precision={p}, recall={r}, f1={f1} dev_size={len(devset)}\n')
+                    f.write(f'batch_size={args.batch_size}, epoch={epoch}')
+                torch.save(swa_model.module, join(save_dir, 'model.pth'))
+                VERSION_CONFIG.dump(save_dir)
+                with open(f'{OUTPUT_DIR}/args.txt', 'w') as f:
+                    f.write(str(args))
 
 if __name__ == '__main__':
     main()
