@@ -10,7 +10,7 @@ from transformers import set_seed
 
 from reader.tags import *
 from utils.args import get_parser, VersionConfig
-from utils.optim import get_linear_schedule_with_warmup
+from utils.optim import get_linear_schedule_with_warmup, get_cycle_schedule
 from utils.utils import strftime, CountSmooth
 from model.myModel import BertNER
 from reader.myReader import NERSet
@@ -102,10 +102,12 @@ def main():
                              shuffle=True, collate_fn=NERSet.collate_fn, pin_memory=True)
 
     optimizer = Adam(model.parameters(), lr=args.learning_rate)
-    scheduler = get_linear_schedule_with_warmup(optimizer, 100, args.max_epoches*len(trainloader))
+    scheduler = get_cycle_schedule(optimizer, 3)
 
     global_step = 0
     loss_ = CountSmooth(100)
+
+    swa_model = swa_utils.AveragedModel(model, device=DEVICE)
 
     for epoch in range(args.max_epoches):
         print()
@@ -134,6 +136,11 @@ def main():
             p, r, f1 = evaluate(model, devloader)
             logger.info(f"after {epoch + 1} epoches,  percision={p}, recall={r}, f1={f1}\n")
 
+        if epoch % 3 == 2:
+            swa_model.update_parameters(model)
+            p,r,f1 = evaluate(swa_model.module, devloader)
+            logger.info(f"swa: {epoch + 1}epoches,  percision={p}, recall={r}, f1={f1}\n")
+
         if epoch >= args.max_epoches - 1:
             save_dir = join(OUTPUT_DIR, f'epoch_{epoch}')
             if not os.path.exists(save_dir):
@@ -142,7 +149,7 @@ def main():
             with open(join(save_dir, 'evaluate.txt'), 'w') as f:
                 f.write(f'precision={p}, recall={r}, f1={f1} dev_size={len(devset)}\n')
                 f.write(f'batch_size={args.batch_size}, epoch={epoch}')
-            torch.save(model, join(save_dir, 'model.pth'))
+            torch.save(swa_model.module, join(save_dir, 'model.pth'))
             VERSION_CONFIG.dump(save_dir)
             with open(f'{OUTPUT_DIR}/args.txt', 'w') as f:
                 f.write(str(args))
