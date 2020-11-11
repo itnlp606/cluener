@@ -101,8 +101,9 @@ def main():
     trainloader = DataLoader(trainset, batch_size=args.batch_size, num_workers=args.num_workers,
                              shuffle=True, collate_fn=NERSet.collate_fn, pin_memory=True)
 
+    T = 4
     optimizer = Adam(model.parameters(), lr=args.learning_rate)
-    scheduler = get_cycle_schedule(optimizer, 3)
+    scheduler = get_cycle_schedule(optimizer, T)
 
     global_step = 0
     loss_ = CountSmooth(100)
@@ -136,12 +137,12 @@ def main():
             p, r, f1 = evaluate(model, devloader)
             logger.info(f"after {epoch + 1} epoches,  percision={p}, recall={r}, f1={f1}\n")
 
-        if epoch % 3 == 2:
+        if epoch % T == T-1:
             swa_model.update_parameters(model)
             p,r,f1 = evaluate(swa_model.module, devloader)
             logger.info(f"swa: {epoch + 1}epoches,  percision={p}, recall={r}, f1={f1}\n")
 
-            if epoch > 3:
+            if epoch > T:
                 save_dir = join(OUTPUT_DIR, f'epoch_{epoch}')
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)

@@ -10,8 +10,9 @@ def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_st
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
+
 def get_cycle_schedule(optimizer, cycle_steps, last_epoch=-1):
     def lr_lambda(current_step):
-        return max(0.08, 1 - (current_step % cycle_steps)/cycle_steps)
+        return max(0.05, 1 - (current_step % cycle_steps + 1)/cycle_steps)
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
