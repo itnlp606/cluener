@@ -1,14 +1,16 @@
 import json
 import os
+import re
 from os.path import join
 
 import torch
 
 from reader.tags import *
 from torch.utils.data import Dataset, DataLoader
-from transformers import AutoTokenizer, BertTokenizer, RobertaTokenizer
+from thulac import thulac
 
 from utils.utils import get_tokenizer_cls, print_execute_time
+
 
 class NERSet(Dataset):
     @print_execute_time
@@ -24,7 +26,8 @@ class NERSet(Dataset):
 
         TokenizerCLS = get_tokenizer_cls(version_cfg.encoder_model)
         self.tokenizer = TokenizerCLS.from_pretrained(version_cfg.encoder_model,
-                                                       cache_dir=pretrained_cache)
+                                                      cache_dir=pretrained_cache)
+        self.lac = thulac(seg_only=True)
 
     def _load_label_data(self):
         data_path = join(self.args.data_dir, f'{self.mode}.json')
@@ -57,48 +60,88 @@ class NERSet(Dataset):
 
     def __getitem__(self, i):
         sample = self.samples[i]
-        encoded_ids = self.tokenizer.encode_plus(text=sample['input_chars'],
-                                                 truncation=True,
-                                                 max_length=self.cfg.max_seq_length,
-                                                 is_split_into_words=True)
-        input_ids = encoded_ids['input_ids']
-        attention_mask = encoded_ids['attention_mask']
+
+        text_b_word_head, text_b_word_tail = ['#'], ['#']  # avoid empty exception
+
+        for w in self.lac.cut(sample['text']):
+            w = w[0]
+            if len(w) > 1 and not re.match(r'.*[0-9].*', w):
+                text_b_word_head.append(w[0])
+                text_b_word_tail.append(w[-1])
+
+        encoded0 = self.tokenizer.encode_plus(text=sample['input_chars'],
+                                              truncation=True,
+                                              max_length=self.cfg.max_seq_length,
+                                              is_split_into_words=True)
+
+        loss_mask = encoded0['attention_mask']
+        max_b_len = self.cfg.max_seq_length - sum(loss_mask) - 1
+        encoded1 = self.tokenizer.encode_plus(text=sample['input_chars'],
+                                              text_pair=text_b_word_head[:max_b_len],
+                                              truncation=True,
+                                              max_length=self.cfg.max_seq_length,
+                                              is_split_into_words=True)
+        encoded2 = self.tokenizer.encode_plus(text=sample['input_chars'],
+                                              text_pair=text_b_word_tail[:max_b_len],
+                                              truncation=True,
+                                              max_length=self.cfg.max_seq_length,
+                                              is_split_into_words=True)
+
+        attention_mask = encoded1['attention_mask']
+        len_a, len_b = sum(loss_mask), sum(attention_mask) - sum(loss_mask)
+        token_type_ids = encoded1['token_type_ids']
+        position_ids = [i for i in range(len_a)] + [0]*len_b
+
+        assert len(encoded1['input_ids']) == len(encoded2['input_ids']) == len(attention_mask) == len(token_type_ids) == len(position_ids)
 
         sample_info = {
             'text': sample['text']
         }
 
+        model_inputs = {
+            'input_ids_1': encoded1['input_ids'],
+            'input_ids_2': encoded2['input_ids'],
+            'attention_mask': attention_mask,
+            'loss_mask': loss_mask,
+            'token_type_ids': token_type_ids,
+            'position_ids': position_ids
+        }
+
         if self.mode != 'test':
             tag_ids = [TAG2ID['[CLS]']] + [TAG2ID[t] for t in sample['labels_list']] + [TAG2ID['[END]']]
-            assert len(tag_ids) == len(input_ids)
+            assert len(tag_ids) == sum(loss_mask)
             sample_info['gold'] = sample['gold']
-            return input_ids, attention_mask, sample_info, tag_ids
+            return model_inputs, sample_info, tag_ids
         else:
             sample_info['id'] = sample['id']
-            return input_ids, attention_mask, sample_info
+            return model_inputs, sample_info
 
     @staticmethod
     def collate_fn(batch: list):
-        max_len_in_batch = max([len(s[0]) for s in batch])
-        pad_lens = [max_len_in_batch - len(s[0]) for s in batch]
-        has_label = bool(len(batch[0]) == 4)
+        max_len_in_batch = max([len(s[0]['input_ids_1']) for s in batch])
+        pad_lens = [max_len_in_batch - len(s[0]['input_ids_1']) for s in batch]
+        pad_loss_lens = [max_len_in_batch - len(s[0]['loss_mask']) for s in batch]
+        has_label = bool(len(batch[0]) == 3)
 
-        input_ids = [s[0] for s in batch]
-        attention_masks = [s[1] for s in batch]
-        sample_infos = [s[2] for s in batch]
+        _model_inputs = [s[0] for s in batch]
+        sample_infos = [s[1] for s in batch]
         if has_label:
-            tag_ids = [s[3] for s in batch]
+            tag_ids = [s[2] for s in batch]
 
         for i in range(len(batch)):
-            input_ids[i] += [0] * pad_lens[i]
-            attention_masks[i] += [0] * pad_lens[i]
+            for k in _model_inputs[i].keys():
+                if k != 'loss_mask':
+                    _model_inputs[i][k] += [0] * pad_lens[i]
+                    _model_inputs[i][k] = torch.tensor(_model_inputs[i][k])
             if has_label:
-                tag_ids[i] += [TAG2ID['[END]']] * pad_lens[i]
+                tag_ids[i] += [TAG2ID['[END]']] * pad_loss_lens[i]
 
-        model_inputs = {
-            'input_ids': torch.tensor(input_ids),
-            'attention_mask': torch.tensor(attention_masks)
-        }
+        model_inputs = {}
+        for k in _model_inputs[0].keys():
+            if k == 'loss_mask':
+                model_inputs[k] = [inputs[k] for inputs in _model_inputs]
+            else:
+                model_inputs[k] = torch.stack([inputs[k] for inputs in _model_inputs])
 
         if has_label:
             tag_ids = torch.tensor(tag_ids)

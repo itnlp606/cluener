@@ -15,10 +15,25 @@ class BertNER(nn.Module):
         self.hidden_size = self.encoder.config.hidden_size
         self.emission_ffn = nn.Linear(self.hidden_size, len(ID2TAG))
         self.crossentropy = torch.nn.CrossEntropyLoss(ignore_index=TAG2ID['[END]'])
+        self.embeddings = self.encoder.get_input_embeddings()
+
+    def _get_encoder_outputs(self, encoder_inputs):
+        input_ids_1 = encoder_inputs['input_ids_1']
+        input_ids_2 = encoder_inputs['input_ids_2']
+
+        attention_mask = encoder_inputs['attention_mask']
+        token_type_ids = encoder_inputs['token_type_ids']
+        position_ids = encoder_inputs['position_ids']
+
+        embed_1 = self.embeddings(input_ids_1)
+        embed_2 = self.embeddings(input_ids_2)
+        embed = (embed_1 + embed_2) / 2
+        outputs = self.encoder(inputs_embeds=embed, attention_mask=attention_mask, token_type_ids=token_type_ids,
+                               position_ids=position_ids)
+        return outputs
 
     def forward(self, encoder_inputs: dict, tag_ids: torch.Tensor):
-        outputs = self.encoder(**encoder_inputs)
-
+        outputs = self._get_encoder_outputs(encoder_inputs)
         encoded, _ = outputs
 
         emission = self.emission_ffn(encoded)
@@ -28,11 +43,11 @@ class BertNER(nn.Module):
         return loss
 
     def predict(self, inputs: dict):
-        outputs = self.encoder(**inputs)
+        outputs = self._get_encoder_outputs(inputs)
         encoded, _ = outputs
         emission = self.emission_ffn(encoded)
         pred_ids = torch.argmax(emission, -1)
-        masks = inputs['attention_mask']
+        masks = inputs['loss_mask']
 
         tag_paths = []
         for i in range(emission.shape[0]):
