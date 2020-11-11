@@ -8,6 +8,7 @@ import torch
 from reader.tags import *
 from torch.utils.data import Dataset, DataLoader
 from thulac import thulac
+import jieba
 
 from utils.utils import get_tokenizer_cls, print_execute_time
 
@@ -27,7 +28,6 @@ class NERSet(Dataset):
         TokenizerCLS = get_tokenizer_cls(version_cfg.encoder_model)
         self.tokenizer = TokenizerCLS.from_pretrained(version_cfg.encoder_model,
                                                       cache_dir=pretrained_cache)
-        self.lac = thulac(seg_only=True)
 
     def _load_label_data(self):
         data_path = join(self.args.data_dir, f'{self.mode}.json')
@@ -63,8 +63,7 @@ class NERSet(Dataset):
 
         text_b_word_head, text_b_word_tail = ['#'], ['#']  # avoid empty exception
 
-        for w in self.lac.cut(sample['text']):
-            w = w[0]
+        for w in jieba.cut_for_search(sample['text'].replace(' ', '')):
             if len(w) > 1 and not re.match(r'.*[0-9].*', w):
                 text_b_word_head.append(w[0])
                 text_b_word_tail.append(w[-1])
