@@ -2,7 +2,7 @@ import os
 from os.path import join
 
 import torch
-from torch.optim import Adam, swa_utils
+from torch.optim import Adam, swa_utils, AdamW
 from torch.utils.data import DataLoader
 from loguru import logger
 from tqdm import tqdm
@@ -102,7 +102,7 @@ def main():
                              shuffle=True, collate_fn=NERSet.collate_fn, pin_memory=True)
 
     T = 4
-    optimizer = Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = get_cycle_schedule(optimizer, T)
 
     global_step = 0
