@@ -101,7 +101,7 @@ def main():
     trainloader = DataLoader(trainset, batch_size=args.batch_size, num_workers=args.num_workers,
                              shuffle=True, collate_fn=NERSet.collate_fn, pin_memory=True)
 
-    T = 4
+    T = 3
     optimizer = AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = get_cycle_schedule(optimizer, T)
 
